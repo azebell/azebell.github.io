@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="stylesheet" href="./reveal.js/css/reveal.css">
+		<link rel="stylesheet" href="./reveal.js/css/theme/black.css">
+		<link rel="stylesheet" href="./reveal.js/lib/css/zenburn.css">
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? './reveal.js/css/print/pdf.css' : './reveal.js/css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+		<style type="text/css">
+			img {
+				background: none !important;
+				border: none !important;
+				box-shadow: none !important;
+			}
+			.latex {
+				font-family: serif !important;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+<section>
+	<h2>Combinatorics<br>and<br>Probability</h2>
+	<h4 class="fragment fade-in">(using Python)</h4>
+</section>
+
+<section>
+	<section>
+		<h3>Probability</h3>
+		<p class="fragment fade-in-then-semi-out">What are the odds?</p>
+		<p class="fragment fade-in-then-semi-out">How many attempts (on average)?</p>
+	</section>
+	<section>
+		<h3>Pokemon Go</h3>
+		<p class="fragment fade-in-then-semi-out">We are given a probability that a pokeball will capture a single pokemon and the number of pokemon we want to catch.</p>
+		<p class="fragment fade-in-then-semi-out">Our goal is to figure out how many balls it will take to catch 'em all.</p>
+		<img src="catch-em-all.png" class="fragment fade-in">
+	</section>
+	<section>
+		<h3>Pokemon Go</h3>
+		<p class="fragment fade-in">Given the chance (per pokeball) to catch a pokemon, how many balls should it take?</p>
+		<p class="fragment fade-in">p = 0.25, balls = <span class="fragment fade-in">4</span></p>
+		<p class="fragment fade-in">Given a number of pokemon, how many balls should it take?</p>
+		<p class="fragment fade-in">p = 0.25, pokemon = 3, balls = ?</p>
+		<p class="fragment fade-in">bpm &times; pokemon = balls = 12</p>
+		<aside class="notes">
+			bpm = balls per mon
+		</aside>
+	</section>
+	<section>
+		<h3>Pokemon Go</h3>
+		<pre><code class="python">
+import math
+
+cases = int(input())
+
+for c in range(cases):
+	mon, chance = map(float, input().split())
+	# it takes 1/chance balls on average to catch
+	# multiply by mon to get total balls
+	balls = math.ceil(mon/chance)
+	print("%d" % (balls))
+		</code></pre>
+	</section>
+</section>
+
+<section>
+	<section>
+		<h3>Combinatorics</h3>
+		<p class="fragment fade-in-then-semi-out">How many combinations?</p>
+		<p class="fragment fade-in-then-semi-out">How many permutations?</p>
+	</section>
+	<section>
+		<h3>Chip's Passcodes</h3>
+		<p class="fragment fade-in-then-semi-out">Chip can't remember his passcode. He needs an interesting pattern.</p>
+		<p class="fragment fade-in-then-semi-out">April suggests making his password so that each digit is relatively prime to the digit before it.</p>
+		<p class="fragment fade-in-then-semi-out">How many different passwords of some length <i>k</i> fit this criteria?</p>
+	</section>
+	<section>
+		<h3>Strategy</h3>
+		<p class="fragment fade-in-then-semi-out">The first digit can be any number 2-9</p>
+		<p class="fragment fade-in-then-semi-out">We check each possibility and see what the next number is allowed to be.</p>
+		<p class="fragment fade-in-then-semi-out">Check the next number in the same way, until we reach the desired passcode length.</p>
+	</section>
+	<section>
+		<h3>How to check valid digits</h3>
+		<p class="fragment fade-in-then-semi-out">Relatively prime means they share no factors.</p>
+		<p class="fragment fade-in-then-semi-out">We need a function to factor.</p>
+		<p class="fragment fade-in-then-semi-out">We need a function to check if relatively prime.</p>
+	</section>
+	<section>
+		<h5>Factoring</h5>
+		<pre><code class="python">
+def factors(n):
+	f = [i for i in range(2,n//2) if n%i==0]
+	f.append(n)
+	return f
+		</code></pre>
+		<aside class="notes">
+			We want from 2 to n/2, but we also need n
+		</aside>
+	</section>
+	<section>
+		<h5>Finding Relative Primes</h5>
+		<p>\[
+		|{ x \in ( M \cap N ) }| = 0
+		\]</p>
+		<pre><code class="python">
+def rel_prime(m, n):
+	common = [x for x in factors(m) if x in factors(n)]
+	return len(common)==0
+		</code></pre>
+		<aside class="notes">
+			M and N are the factors of the numbers m and n.
+		</aside>
+	</section>
+	<section>
+		<h3>Finding valid pairs</h3>
+		<pre><code class="python">
+v = {}
+for i in range(2,10):
+	v[i] = [x for x in range(2,10) if x!=i and rel_prime(i,x)]
+		</code></pre>
+	</section>
+	<section>
+		<h3>Getting the answer</h3>
+		<pre><code class="python">
+def combos(v, current, follows, k):
+	if k==1:
+		return 1
+	total = 0
+	for i in range(len(follows)):
+		total += combos(v, follows[i], v[follows[i]], k-1)
+	return total
+		</code></pre>
+	</section>
+</section>
+<section>
+	<section>
+		<h3>Issues</h3>
+		<p class="fragment fade-in-then-semi-out">Too slow</p>
+		<p class="fragment fade-in-then-semi-out">Too many recursive calls</p>
+		<p class="fragment fade-in-then-semi-out">How can we fix it?</p>
+	</section>
+	<section>
+		<h3>Memoize</h3>
+		<p class="fragment fade-in-then-semi-out">Hash table of function results</p>
+		<p class="fragment fade-in-then-semi-out">Instead of calling the same recursive function over and over, just lookup the answer</p>
+		<p class="fragment fade-in-then-semi-out">Use a "function decorator"</p>
+	</section>
+	<section>
+		<h3>Memoize</h3>
+		<pre><code class="python">
+def memoize(F):
+	# A hash table for storing previous states
+	hashed_states = {}
+	def memoized_F(*args):
+		# if we haven't memoized this state, calculate
+		# it. Then return it
+		if args not in hashed_states:
+			hashed_states[args] = F(*args)
+		return hashed_states[args]
+	return memoized_F
+		</code></pre>
+		<p class="fragment fade-in-then-semi-out">When used as a decorator, it takes any function <i>F</i> and when you call <i>F</i>, it runs this code instead (which runs <i>F</i>).</p>
+	</section>
+	<section>
+		<h3>New Solution</h3>
+		<pre><code class="python">
+@memoize
+def combos(n, k):
+	if k==1:
+		return 1
+	follows = [x for x in range(2,10) if rel_prime(n,x)]
+	total = 0
+	for i in range(len(follows)):
+		total += combos(follows[i], k-1)
+	return total
+		</code></pre>
+		<aside class="notes">
+			Since the previous arguments could not be hashed to enable lookup in the memoize table, you must alter the function so that the arguments can be hashed.
+		</aside>
+	</section>
+</section>
+<section>
+	<h3>Questions?</h3>
+</section>
+
+<p class="fragment fade-in-then-semi-out"></p>
+
+</div>
+</div>
+<script src="./reveal.js/lib/js/head.min.js"></script>
+<script src="./reveal.js/js/reveal.js"></script>
+<script>
+	// More info https://github.com/hakimel/reveal.js#configuration
+	Reveal.initialize({
+		controls: true,
+		progress: true,
+		history: true,
+		center: true,
+
+		transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+		// More info https://github.com/hakimel/reveal.js#dependencies
+		dependencies: [
+		{ src: './reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+		{ src: './reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+		{ src: './reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+		{ src: './reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+		{ src: './reveal.js/plugin/zoom-js/zoom.js', async: true },
+		{ src: './reveal.js/plugin/notes/notes.js', async: true },
+		{ src: './reveal.js/plugin/math/math.js', async: true }
+		]
+	});
+</script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="stylesheet" href="./reveal.js/css/reveal.css">
+		<link rel="stylesheet" href="./reveal.js/css/theme/black.css">
+		<link rel="stylesheet" href="./reveal.js/lib/css/zenburn.css">
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? './reveal.js/css/print/pdf.css' : './reveal.js/css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+		<style type="text/css">
+			img {
+				background: none !important;
+				border: none !important;
+				box-shadow: none !important;
+			}
+			.latex {
+				font-family: serif !important;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+<section>
+	<h2>Solving Problems with Python</h2>
+</section>
+
+<section>
+	<section>
+		<h3>Strings</h3>
+	</section>
+	<section>
+		<h4>Change Case</h4>
+		<pre><code class="python" data-trim>
+#Change Case
+"BINARY BEARS".lower() 		-> 'binary bears'
+"binary bears".upper() 		-> 'BINARY BEARS'
+"binary BEARS".swapcase()	-> 'BINARY bears'
+
+#Other Change Case
+"binary bears".capitalize()	-> 'Binary bears'
+"binary bears".title()		-> 'Binary Bears'
+
+#Case Conditionals
+"binary bears".isupper()    -> False
+"binary bears".islower()    -> True
+"binary bears".istitle()    -> False
+		</code></pre>
+	</section>
+	<section>
+		<h4>Trimming Strings</h4>
+		<pre><code class="python">
+"     B e a r   ".strip()  -> 'B e a r'
+"     Bear   ".lstrip()    -> 'Bear   '
+"     Bear   ".rstrip()    -> '     Bear'            
+		</code></pre>
+	</section>
+	<section>
+		<h4>Find and Count</h4>
+		<pre><code class="python">
+"binary bears".find('a')     -> 3
+"binary bears".rfind('a')    -> 9 #return the highest index
+"binary bears".index('bear') -> 7 #throws exception if absent
+"binary bears".rindex('a')   -> 9
+
+"bear" in "binary bears"     -> True #also works with lists
+
+"binary bears".count('bear') -> 1
+		</code></pre>
+	</section>
+	<section>
+		<h4>Split</h4>
+		<pre><code class="python" data-trim>
+>>> "Red fish, Blue Fish, Green Fish".split()
+['Red', 'fish,', 'Blue', 'Fish,', 'Green', 'Fish']
+
+>>> "Red fish, Blue Fish, Green Fish".split(',')
+['Red fish', ' Blue Fish', ' Green Fish']
+
+>>> "Red fish, Blue Fish, Green Fish".split(',', maxsplit=1)
+['Red fish', ' Blue Fish, Green Fish']
+
+>>> "Line1\nLine2\nLine3\n".splitlines()
+['Line1', 'Line2', 'Line3']
+		</code></pre>
+	</section>
+	<section>
+		<h4>String contains</h4>
+		<pre><code class="python" data-trim>
+s = "This is a normal sentence."
+
+if s.find("cool") > -1:
+	print("Cool sentence.")
+
+# OR
+
+if "cool" in s:
+	print("Cool sentence.")
+		</code></pre>
+	</section>
+</section>
+
+<section>
+	<section>
+		<h3>Lists</h3>
+	</section>
+	<section>
+		<h4>List slicing and reversing</h4>
+		<pre><code class="python">
+a = [0,1,2,3,4,5,6,7,8,9]
+
+a[3]		# element  3
+a[1:6]		# elements 1,2,3,4,5
+a[1:6:2]	# elements 1,3,5
+a[1:6:-1]	# elements 5,4,3,2,1
+a[3:]		# elements 3,4,5,...
+a[:3]		# elements 0,1,2
+a[::-1]		# a in reverse
+
+# slicing works on strings as well!
+		</code></pre>
+	</section>
+	<section>
+		<h4>List Comprehensions</h4>
+		<pre><code class="python" data-trim>
+>>> l = [1, 2, 3, 4]
+>>> [num+1 for num in l] 
+[2, 3, 4, 5]
+>>> ["Case " + str(num) for num in l] 
+['Case 1', 'Case 2', 'Case 3', 'Case 4']
+		</code></pre>
+	</section>
+	<section>
+		<h4>Modifying an entire list</h4>
+		<pre><code class="python">
+a = ['work', 'play', 'eat']
+a = list( map(lambda x: x+"ing", a) )
+# or
+def add_suffix(s):
+	return s+"ing"
+
+a = list( map(add_suffix, a) )
+
+# ['working', 'playing', 'eating']
+		</code></pre>
+		<p>For example, we can use map to apply a function that adds a suffix to each element in the list.</p>
+		<p>Notice that <code>map</code> returns an iterator. To play with it like a list, we need to cast.</p>
+	</section>
+</section>
+
+<section>
+	<section>
+		<h3>Helpful functions</h3>
+	</section>
+	<section>
+		<h3>Looping through cases</h3>
+		<p>Problems that start with a number of cases to process can be handled like this:</p>
+		<pre><code class="python">
+cases = int(input())
+
+for c in range(cases):
+	line = input().split()
+	# code to solve each case here
+		</code></pre>
+	</section>
+	<section>
+		<h5>Factoring</h5>
+		<p>Often you will run into a problem where yo u need to factor numbers.</p>
+		<pre><code class="python">
+def factors(n):
+	f = [i for i in range(2,n//2) if n%i==0]
+	f.append(n)
+	return f
+		</code></pre>
+		<aside class="notes">
+			We want from 2 to n/2, but we also need n
+		</aside>
+	</section>
+	<section>
+		<h3>Memoize</h3>
+		<pre><code class="python">
+def memoize(F):
+	# A hash table for storing previous states
+	hashed_states = {}
+	def memoized_F(*args):
+		# if we haven't memoized this state, calculate
+		# it. Then return it
+		if args not in hashed_states:
+			hashed_states[args] = F(*args)
+		return hashed_states[args]
+	return memoized_F
+		</code></pre>
+		<p>When used as a decorator, it takes any function <i>F</i> and when you call <i>F</i>, it runs this code instead (which runs <i>F</i>).</p>
+		<aside class="notes">
+			It is important to note that the arguments must be hashable for this to work.
+		</aside>
+	</section>
+</section>
+<section>
+	<section>
+		<h5>Great links curated by Chip</h5>
+		<ul>
+		<li><a href="https://mercerbinarybears.github.io/Slides/2017/9-14.html">Python and Math</a></li>
+		<li><a href="https://mercerbinarybears.github.io/Slides/2017/9-21.html">Python, Strings, and Iterables</a></li>
+		</ul>
+	</section>
+</section>
+
+<p class="fragment fade-in-then-semi-out"></p>
+
+</div>
+</div>
+<script src="./reveal.js/lib/js/head.min.js"></script>
+<script src="./reveal.js/js/reveal.js"></script>
+<script>
+	// More info https://github.com/hakimel/reveal.js#configuration
+	Reveal.initialize({
+		controls: true,
+		progress: true,
+		history: true,
+		center: true,
+
+		transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+		// More info https://github.com/hakimel/reveal.js#dependencies
+		dependencies: [
+		{ src: './reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+		{ src: './reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+		{ src: './reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+		{ src: './reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+		{ src: './reveal.js/plugin/zoom-js/zoom.js', async: true },
+		{ src: './reveal.js/plugin/notes/notes.js', async: true },
+		{ src: './reveal.js/plugin/math/math.js', async: true }
+		]
+	});
+</script>
+</body>
+</html>
