@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Pong</title>
+	<style>
+		body {
+			margin: 0;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+			background-color: #1a1a1a;
+			color: #fff;
+			font-family: 'Courier New', Courier, monospace;
+			overflow: hidden;
+		}
+		canvas {
+			background-color: #000;
+			border: 4px solid #fff;
+		}
+		.controls {
+			margin-top: 15px;
+			color: #888;
+		}
+	</style>
+</head>
+<body>
+
+	<h1 id="status">PONG</h1>
+	<canvas id="pongCanvas" width="800" height="500"></canvas>
+	<div class="controls">P1: W/S | P2: Arrows | Space to Restart</div>
+
+	<script>
+		const canvas = document.getElementById('pongCanvas');
+		const ctx = canvas.getContext('2d');
+
+		// --- AUDIO SYSTEM ---
+		const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+		function playSound(frequency, type, duration) {
+			if (audioCtx.state === 'suspended') audioCtx.resume();
+			
+			const oscillator = audioCtx.createOscillator();
+			const gainNode = audioCtx.createGain();
+
+			oscillator.type = type; // 'square' is very retro, 'sine' is smooth
+			oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+			
+			gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+			gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+			oscillator.connect(gainNode);
+			gainNode.connect(audioCtx.destination);
+
+			oscillator.start();
+			oscillator.stop(audioCtx.currentTime + duration);
+		}
+
+		// --- GAME LOGIC ---
+		const WINNING_SCORE = 5;
+		let isGameOver = false;
+		const keys = { w: false, s: false, ArrowUp: false, ArrowDown: false };
+
+		const player1 = { x: 10, y: 200, width: 10, height: 100, score: 0, dy: 8 };
+		const player2 = { x: 780, y: 200, width: 10, height: 100, score: 0, dy: 8 };
+		const ball = { x: 400, y: 250, radius: 8, speed: 7, dx: 5, dy: 5 };
+
+		window.addEventListener('keydown', e => {
+			if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+			if (e.code === 'Space' && isGameOver) resetGame();
+		});
+		window.addEventListener('keyup', e => {
+			if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+		});
+
+		function drawRect(x, y, w, h, color) {
+			ctx.fillStyle = color;
+			ctx.fillRect(x, y, w, h);
+		}
+
+		function drawCircle(x, y, r, color) {
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.arc(x, y, r, 0, Math.PI * 2);
+			ctx.fill();
+		}
+
+		function resetBall() {
+			ball.x = canvas.width / 2;
+			ball.y = canvas.height / 2;
+			ball.speed = 7;
+			ball.dx = -ball.dx;
+		}
+
+		function resetGame() {
+			player1.score = 0;
+			player2.score = 0;
+			isGameOver = false;
+			resetBall();
+			gameLoop();
+		}
+
+		function collision(b, p) {
+			return b.x + b.radius > p.x && b.x - b.radius < p.x + p.width &&
+				   b.y + b.radius > p.y && b.y - b.radius < p.y + p.height;
+		}
+
+		function update() {
+			if (isGameOver) return;
+
+			if (keys.w && player1.y > 0) player1.y -= player1.dy;
+			if (keys.s && player1.y + player1.height < canvas.height) player1.y += player1.dy;
+			if (keys.ArrowUp && player2.y > 0) player2.y -= player2.dy;
+			if (keys.ArrowDown && player2.y + player2.height < canvas.height) player2.y += player2.dy;
+
+			ball.x += ball.dx;
+			ball.y += ball.dy;
+
+			// Wall Bounce
+			if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+				ball.dy *= -1;
+				playSound(200, 'sine', 0.1); // Low boop
+			}
+
+			let player = (ball.x < canvas.width / 2) ? player1 : player2;
+			if (collision(ball, player)) {
+				let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
+				let angleRad = (Math.PI / 4) * collidePoint;
+				let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+				ball.dx = direction * ball.speed * Math.cos(angleRad);
+				ball.dy = ball.speed * Math.sin(angleRad);
+				ball.speed += 0.4;
+				playSound(440, 'square', 0.1); // High bip
+			}
+
+			if (ball.x - ball.radius < 0) {
+				player2.score++;
+				playSound(150, 'sawtooth', 0.3); // Score sound
+				if (player2.score >= WINNING_SCORE) isGameOver = true;
+				else resetBall();
+			} else if (ball.x + ball.radius > canvas.width) {
+				player1.score++;
+				playSound(150, 'sawtooth', 0.3);
+				if (player1.score >= WINNING_SCORE) isGameOver = true;
+				else resetBall();
+			}
+		}
+
+		function draw() {
+			// Clear
+			drawRect(0, 0, canvas.width, canvas.height, "#000");
+			
+			// Scores
+			ctx.font = "50px Courier New";
+			ctx.fillStyle = "#fff";
+			ctx.fillText(player1.score, canvas.width / 4, 80);
+			ctx.fillText(player2.score, 3 * canvas.width / 4, 80);
+
+			// Net
+			for(let i = 0; i <= canvas.height; i+=35) {
+				drawRect(canvas.width/2 - 1, i, 2, 20, "#fff");
+			}
+
+			// Paddles and Ball
+			drawRect(player1.x, player1.y, player1.width, player1.height, "#fff");
+			drawRect(player2.x, player2.y, player2.width, player2.height, "#fff");
+			drawCircle(ball.x, ball.y, ball.radius, "#fff");
+
+			if (isGameOver) {
+				drawRect(0, 0, canvas.width, canvas.height, "rgba(0,0,0,0.7)");
+				ctx.fillStyle = "#fff";
+				ctx.textAlign = "center";
+				ctx.font = "40px Courier New";
+				let winner = player1.score >= WINNING_SCORE ? "PLAYER 1" : "PLAYER 2";
+				ctx.fillText(winner + " WINS!", canvas.width / 2, canvas.height / 2);
+				ctx.font = "20px Courier New";
+				ctx.fillText("PRESS SPACE TO RESTART", canvas.width / 2, canvas.height / 2 + 50);
+				ctx.textAlign = "start";
+			}
+		}
+
+		function gameLoop() {
+			update();
+			draw();
+			if (!isGameOver) requestAnimationFrame(gameLoop);
+		}
+
+		gameLoop();
+	</script>
+</body>
+</html>
