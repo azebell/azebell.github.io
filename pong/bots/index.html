@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Pong</title>
+	<style>
+		body {
+			margin: 0;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			background-color: #1a1a1a;
+			color: #fff;
+			font-family: 'Courier New', Courier, monospace;
+			/* height: 100vh; */
+			/* overflow: hidden; */
+		}
+		canvas {
+			background-color: #000;
+			border: 4px solid #fff;
+		}
+		textarea,
+		pre {
+			-moz-tab-size : 4;
+			-o-tab-size : 4;
+				tab-size : 4;
+		}
+		.pongCanvas {
+			/* width: 480px;
+			height: 300px; */
+		}
+		.controls {
+			margin-top: 15px;
+			color: #888;
+		}
+		.container {
+			display: flex;
+			justify-content: stretch;
+		}
+		.programs-container {
+			display: flex;
+			margin-bottom: 3em;
+		}
+		.program-container {
+			display: flex;
+			flex-direction: column;
+			margin: 0 1em;
+		}
+	</style>
+</head>
+<body>
+	<h1 id="status">PONG</h1>
+	<canvas id="pongCanvas" class="pongCanvas" width="800" height="500"></canvas>
+	<div class="controls">Space to Restart</div>
+	<div class="programs-container">
+		<div class="program-container">
+			<h2>Player 1 Program</h2>
+			<textarea id="player1program" rows="30" cols="50"></textarea>
+			<div>
+				<button onclick="applyPlayer1()">Apply</button>
+				<!-- <button>Save</button>
+				<button>Load</button> -->
+			</div>
+		</div>
+		<div class="program-container">
+			<h2>Player 2 Program</h2>
+			<textarea id="player2program" rows="30" cols="50"></textarea>
+			<div>
+				<button onclick="applyPlayer2()">Apply</button>
+				<!-- <button>Save</button>
+				<button>Load</button> -->
+			</div>
+		</div>
+	</div>
+	<div class="api-container">
+		<h2>Bot function</h2>
+		<p>Your function signature should match:</p>
+		<code>
+			function(paddle, ball, field, lineDrawer) {}
+		</code>
+		<p>The return value, if any, is unused. The four parameters contain the methods described below.</p>
+		<h3>Paddle</h3>
+		<dl>
+			<dt>move(v)</dt>
+			<dd>Moves the paddle up if v is less than 0, down if v is greater than 0, and not at all if v is 0.</dd>
+			<dt>getX()</dt>
+			<dd>Returns the x coordinate of the center of the paddle.</dd>
+			<dt>getY()</dt>
+			<dd>Returns the y coordinate of the center of the paddle.</dd>
+		</dl>
+		<h3>Ball</h3>
+		<dl>
+			<dt>getX()</dt>
+			<dd>Returns the x coordinate of the center of the ball.</dd>
+			<dt>getY()</dt>
+			<dd>Returns the y coordinate of the center of the ball.</dd>
+			<dt>getDX()</dt>
+			<dd>Returns the speed of the ball along the x-axis.</dd>
+			<dt>getDY()</dt>
+			<dd>Returns the speed of the ball along the y-axis.</dd>
+		</dl>
+		<h3>Field</h3>
+		<dl>
+			<dt>getWidth()</dt>
+			<dd>Returns the width of the field.</dd>
+			<dt>getHeight()</dt>
+			<dd>Returns the height of the field.</dd>
+		</dl>
+		<h3>Line Drawer</h3>
+		<dl>
+			<dt>add(line)</dt>
+			<dd>Adds line to be drawn next frame.</dd>
+		</dl>
+		<h3>Line</h3>
+		<dl>
+			<dt>constructor(x1, y1, x2, y2)</dt>
+			<dd>Represents a line segment from the points (x1, y1) and (x2, y2).</dd>
+		</dl>
+	</div>
+
+	<script>
+		var player1Program = function() {};
+		var player2Program = function() {};
+
+		const P1SOURCECOOKIE = "p1source";
+		const P2SOURCECOOKIE = "p2source";
+		document.getElementById("player1program").value = decodeURI(localStorage.getItem(P1SOURCECOOKIE));
+		document.getElementById("player2program").value = decodeURI(localStorage.getItem(P2SOURCECOOKIE));
+		applyPlayer1();
+		applyPlayer2();
+
+		(function enableTextAreaTabs() {
+			document.querySelectorAll('textarea').forEach(e => e.addEventListener('keydown', function(e) {
+				if (e.key == 'Tab') {
+					e.preventDefault();
+					var start = this.selectionStart;
+					var end = this.selectionEnd;
+
+					// set textarea value to: text before caret + tab + text after caret
+					this.value = this.value.substring(0, start) +
+					"\t" + this.value.substring(end);
+
+					// put caret at right position again
+					this.selectionStart =
+					this.selectionEnd = start + 1;
+				}
+			}));
+		})();
+
+		const canvas = document.getElementById('pongCanvas');
+		const ctx = canvas.getContext('2d');
+
+		// --- AUDIO SYSTEM ---
+		const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+		function playSound(frequency, type, duration) {
+			if (audioCtx.state === 'suspended') audioCtx.resume();
+			
+			const oscillator = audioCtx.createOscillator();
+			const gainNode = audioCtx.createGain();
+
+			oscillator.type = type; // 'square' is very retro, 'sine' is smooth
+			oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+			
+			gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+			gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+			oscillator.connect(gainNode);
+			gainNode.connect(audioCtx.destination);
+
+			oscillator.start();
+			oscillator.stop(audioCtx.currentTime + duration);
+		}
+
+		// --- GAME LOGIC ---
+		const WINNING_SCORE = 10;
+		let isGameOver = false;
+
+		const keys = { w: false, s: false, ArrowUp: false, ArrowDown: false };
+
+		const paddle1 = { x: 10, y: 200, width: 10, height: 100, score: 0, dy: 8 };
+		const paddle2 = { x: 780, y: 200, width: 10, height: 100, score: 0, dy: 8 };
+		const ball = { x: 400, y: 250, radius: 8, speed: 7, dx: 5, dy: 5 };
+
+		window.addEventListener('keydown', e => {
+			if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+			if (e.code === 'Space' && isGameOver) resetGame();
+		});
+		window.addEventListener('keyup', e => {
+			if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+		});
+
+		function drawLine(x1, y1, x2, y2, color) {
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = color;
+			ctx.beginPath();
+			ctx.moveTo(x1, y1);
+			ctx.lineTo(x2, y2);
+			ctx.stroke();
+		}
+
+		function drawRect(x, y, w, h, color) {
+			ctx.fillStyle = color;
+			ctx.fillRect(x, y, w, h);
+		}
+
+		function drawCircle(x, y, r, color) {
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.arc(x, y, r, 0, Math.PI * 2);
+			ctx.fill();
+		}
+
+		function resetBall() {
+			ball.x = canvas.width / 2;
+			ball.y = canvas.height / 2;
+			ball.speed = 7;
+			ball.dx = -ball.dx;
+			let magnitude = Math.sqrt(ball.dx*ball.dx + ball.dy*ball.dy);
+			ball.dx = ball.speed * ball.dx / magnitude;
+			ball.dy = ball.speed * ball.dy / magnitude;
+		}
+
+		function resetPaddles() {
+			paddle1.y = canvas.height / 2 - paddle1.height;
+			paddle2.y = canvas.height / 2 - paddle2.height;
+		}
+
+		function resetGame() {
+			paddle1.score = 0;
+			paddle2.score = 0;
+			isGameOver = false;
+			resetBall();
+			resetPaddles();
+			gameLoop();
+		}
+
+		function collision(b, p) {
+			return b.x + b.radius > p.x && b.x - b.radius < p.x + p.width &&
+				   b.y + b.radius > p.y && b.y - b.radius < p.y + p.height;
+		}
+
+		function update() {
+			if (isGameOver) return;
+
+			ball.x += ball.dx;
+			ball.y += ball.dy;
+
+			// Wall Bounce
+			if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+				ball.dy *= -1;
+				playSound(200, 'sine', 0.1); // Low boop
+			}
+			
+			let player = (ball.x < canvas.width / 2) ? paddle1 : paddle2;
+			if (collision(ball, player)) {
+				let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
+				let angleRad = (Math.PI / 4) * collidePoint;
+				let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+				ball.dx = direction * ball.speed * Math.cos(angleRad);
+				ball.dy = ball.speed * Math.sin(angleRad);
+				ball.speed += 0.4;
+				playSound(440, 'square', 0.1); // High bip
+			}
+			
+			if (ball.x - ball.radius < 0) {
+				paddle2.score++;
+				playSound(150, 'sawtooth', 0.3); // Score sound
+				if (paddle2.score >= WINNING_SCORE) isGameOver = true;
+				else resetBall();
+			} else if (ball.x + ball.radius > canvas.width) {
+				paddle1.score++;
+				playSound(150, 'sawtooth', 0.3);
+				if (paddle1.score >= WINNING_SCORE) isGameOver = true;
+				else resetBall();
+			}
+
+			player1Program(P1, gameBall, field, lineDrawer1);
+			player2Program(P2, gameBall, field, lineDrawer2);
+
+			if (P1.v < 0 && paddle1.y > 0) paddle1.y -= paddle1.dy;
+			if (P1.v > 0 && paddle1.y + paddle1.height < canvas.height) paddle1.y += paddle1.dy;
+			if (P2.v < 0 && paddle2.y > 0) paddle2.y -= paddle2.dy;
+			if (P2.v > 0 && paddle2.y + paddle2.height < canvas.height) paddle2.y += paddle2.dy;
+		}
+
+		function draw() {
+			output.show();
+			// Clear
+			drawRect(0, 0, canvas.width, canvas.height, "#000");
+			
+			// Scores
+			ctx.font = "50px Courier New";
+			ctx.fillStyle = "#fff";
+			ctx.fillText(paddle1.score, canvas.width / 4, 80);
+			ctx.fillText(paddle2.score, 3 * canvas.width / 4, 80);
+
+			// Net
+			for(let i = 0; i <= canvas.height; i+=35) {
+				drawRect(canvas.width/2 - 1, i, 2, 20, "#fff");
+			}
+
+			// Paddles and Ball
+			drawRect(paddle1.x, paddle1.y, paddle1.width, paddle1.height, "#fff");
+			drawRect(paddle2.x, paddle2.y, paddle2.width, paddle2.height, "#fff");
+			drawCircle(ball.x, ball.y, ball.radius, "#fff");
+
+			// Player bot lines
+			lineDrawer1.lines.forEach((line) => {
+				drawLine(line.x1, line.y1, line.x2, line.y2, lineDrawer1.color);
+			});
+			lineDrawer2.lines.forEach((line) => {
+				drawLine(line.x1, line.y1, line.x2, line.y2, lineDrawer2.color);
+			});
+
+			if (isGameOver) {
+				drawRect(0, 0, canvas.width, canvas.height, "rgba(0,0,0,0.7)");
+				ctx.fillStyle = "#fff";
+				ctx.textAlign = "center";
+				ctx.font = "40px Courier New";
+				let winner = paddle1.score >= WINNING_SCORE ? "PLAYER 1" : "PLAYER 2";
+				ctx.fillText(winner + " WINS!", canvas.width / 2, canvas.height / 2);
+				ctx.font = "20px Courier New";
+				ctx.fillText("PRESS SPACE TO RESTART", canvas.width / 2, canvas.height / 2 + 50);
+				ctx.textAlign = "start";
+			}
+		}
+
+		function gameLoop() {
+			lineDrawer1.clear();
+			lineDrawer2.clear();
+			update();
+			draw();
+			const fps = 30;
+			if (!isGameOver) {
+				requestAnimationFrame(gameLoop);
+			}
+		}
+
+		function applyPlayer1() {
+			let ta = document.getElementById("player1program");
+			let program = ta.value;
+			if (ta.value == "") return;
+			localStorage.setItem(P1SOURCECOOKIE, encodeURI(program));
+			program = "player1Program = " + program;
+			eval(program);
+		}
+
+		function applyPlayer2() {
+			let ta = document.getElementById("player2program");
+			let program = ta.value;
+			if (ta.value == "") return;
+			localStorage.setItem(P2SOURCECOOKIE, encodeURI(program));
+			program = "player2Program = " + program;
+			eval(program);
+		}
+
+		class Player {
+			#paddle;
+			v;
+			constructor(p) {
+				this.#paddle = p;
+				this.v = 0;
+			}
+
+			move(v) {
+				this.v = v;
+			}
+
+			getX() { return this.#paddle.x + this.#paddle.width / 2; }
+			getY() { return this.#paddle.y + this.#paddle.height / 2; }
+		}
+
+		class Ball {
+			#ball;
+			constructor(b) {
+				this.#ball = b;
+			}
+			
+			getX() { return this.#ball.x; }
+			getY() { return this.#ball.y; }
+			getDX() { return this.#ball.dx; }
+			getDY() { return this.#ball.dy; }
+		}
+
+		class LineDrawer {
+			constructor(color) {
+				this.color = color;
+				this.lines = [];
+			}
+
+			add(line) {
+				this.lines.push(line);
+			}
+			
+			clear() {
+				this.lines.length = 0;
+			}
+		}
+
+		class Line {
+			constructor(x1, y1, x2, y2) {
+				this.x1 = x1;
+				this.y1 = y1;
+				this.x2 = x2;
+				this.y2 = y2;
+			}
+		}
+
+		class Field {
+			constructor(canvas) {
+				this.canvas = canvas;
+			}
+			getWidth() { return canvas.width; }
+			getHeight() { return canvas.height; }
+		}
+
+		var P1 = new Player(paddle1);
+		var P2 = new Player(paddle2);
+		var lineDrawer1 = new LineDrawer("#F00");
+		var lineDrawer2 = new LineDrawer("#0F0");
+		var gameBall = new Ball(ball);
+		var field = new Field(canvas);
+
+		gameLoop();
+	</script>
+</body>
+</html>
