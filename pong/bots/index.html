@@ -126,8 +126,25 @@
 
 		const P1SOURCECOOKIE = "p1source";
 		const P2SOURCECOOKIE = "p2source";
-		document.getElementById("player1program").value = decodeURI(localStorage.getItem(P1SOURCECOOKIE));
-		document.getElementById("player2program").value = decodeURI(localStorage.getItem(P2SOURCECOOKIE));
+		let p1prog = decodeURI(localStorage.getItem(P1SOURCECOOKIE));
+		if (p1prog == 'null') {
+			p1prog = 
+`function (paddle, ball, field, lineDrawer) {
+	if (keys.w)
+		paddle.move(-1);
+	else if (keys.s)
+		paddle.move(1);
+	else
+		paddle.move(0);
+}`;
+		}
+		let p2prog = decodeURI(localStorage.getItem(P2SOURCECOOKIE));
+		if (p2prog == 'null') {
+			p2prog = 
+`function (paddle, ball, field, lineDrawer) {}`;
+		}
+		document.getElementById("player1program").value = p1prog;
+		document.getElementById("player2program").value = p2prog;
 		applyPlayer1();
 		applyPlayer2();
 
@@ -287,7 +304,6 @@
 		}
 
 		function draw() {
-			output.show();
 			// Clear
 			drawRect(0, 0, canvas.width, canvas.height, "#000");
 			
@@ -342,8 +358,8 @@
 		function applyPlayer1() {
 			let ta = document.getElementById("player1program");
 			let program = ta.value;
-			if (ta.value == "") return;
 			localStorage.setItem(P1SOURCECOOKIE, encodeURI(program));
+			if (ta.value == "") return;
 			program = "player1Program = " + program;
 			eval(program);
 		}
@@ -351,8 +367,8 @@
 		function applyPlayer2() {
 			let ta = document.getElementById("player2program");
 			let program = ta.value;
-			if (ta.value == "") return;
 			localStorage.setItem(P2SOURCECOOKIE, encodeURI(program));
+			if (ta.value == "") return;
 			program = "player2Program = " + program;
 			eval(program);
 		}
