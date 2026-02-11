@@ -276,8 +276,12 @@
 			ball.y += ball.dy;
 
 			// Wall Bounce
-			if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
-				ball.dy *= -1;
+			if (ball.y - ball.radius < 0) {
+				ball.dy = Math.abs(ball.dy);
+				playSound(200, 'sine', 0.1); // Low boop
+			}
+			if (ball.y + ball.radius > canvas.height) {
+				ball.dy = -Math.abs(ball.dy);
 				playSound(200, 'sine', 0.1); // Low boop
 			}
 			
