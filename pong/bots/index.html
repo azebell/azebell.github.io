@@ -124,9 +124,9 @@
 		var player1Program = function() {};
 		var player2Program = function() {};
 
-		const P1SOURCECOOKIE = "p1source";
-		const P2SOURCECOOKIE = "p2source";
-		let p1prog = decodeURI(localStorage.getItem(P1SOURCECOOKIE));
+		const P1SOURCEKEY = "p1source";
+		const P2SOURCEKEY = "p2source";
+		let p1prog = decodeURI(localStorage.getItem(P1SOURCEKEY));
 		if (p1prog == 'null') {
 			p1prog = 
 `function (paddle, ball, field, lineDrawer) {
@@ -138,7 +138,7 @@
 		paddle.move(0);
 }`;
 		}
-		let p2prog = decodeURI(localStorage.getItem(P2SOURCECOOKIE));
+		let p2prog = decodeURI(localStorage.getItem(P2SOURCEKEY));
 		if (p2prog == 'null') {
 			p2prog = 
 `function (paddle, ball, field, lineDrawer) {}`;
@@ -259,6 +259,16 @@
 				   b.y + b.radius > p.y && b.y - b.radius < p.y + p.height;
 		}
 
+		function hit(ball, player) {
+			let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
+			let angleRad = (Math.PI / 4) * collidePoint;
+			let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+			ball.dx = direction * ball.speed * Math.cos(angleRad);
+			ball.dy = ball.speed * Math.sin(angleRad);
+			ball.speed += 0.4;
+			playSound(440, 'square', 0.1); // High bip
+		}
+
 		function update() {
 			if (isGameOver) return;
 
@@ -271,15 +281,18 @@
 				playSound(200, 'sine', 0.1); // Low boop
 			}
 			
-			let player = (ball.x < canvas.width / 2) ? paddle1 : paddle2;
-			if (collision(ball, player)) {
-				let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
-				let angleRad = (Math.PI / 4) * collidePoint;
-				let direction = (ball.x < canvas.width / 2) ? 1 : -1;
-				ball.dx = direction * ball.speed * Math.cos(angleRad);
-				ball.dy = ball.speed * Math.sin(angleRad);
-				ball.speed += 0.4;
-				playSound(440, 'square', 0.1); // High bip
+			if (ball.x - ball.radius < paddle1.x + paddle1.width
+					&& ball.y + ball.radius >= paddle1.y
+					&& ball.y - ball.radius <= paddle1.y + paddle1.height) {
+
+				hit(ball, paddle1);
+				ball.x = paddle1.x + paddle1.width + ball.radius;
+			}
+			else if (ball.x + ball.radius > paddle2.x
+					&& ball.y + ball.radius >= paddle2.y
+					&& ball.y - ball.radius <= paddle2.y + paddle2.height) {
+				hit(ball, paddle2);
+				ball.x = paddle2.x - ball.radius;
 			}
 			
 			if (ball.x - ball.radius < 0) {
@@ -358,7 +371,7 @@
 		function applyPlayer1() {
 			let ta = document.getElementById("player1program");
 			let program = ta.value;
-			localStorage.setItem(P1SOURCECOOKIE, encodeURI(program));
+			localStorage.setItem(P1SOURCEKEY, encodeURI(program));
 			if (ta.value == "") return;
 			program = "player1Program = " + program;
 			eval(program);
@@ -367,7 +380,7 @@
 		function applyPlayer2() {
 			let ta = document.getElementById("player2program");
 			let program = ta.value;
-			localStorage.setItem(P2SOURCECOOKIE, encodeURI(program));
+			localStorage.setItem(P2SOURCEKEY, encodeURI(program));
 			if (ta.value == "") return;
 			program = "player2Program = " + program;
 			eval(program);
