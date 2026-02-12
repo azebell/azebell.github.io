@@ -57,7 +57,7 @@
 		<input type="range" id="speed" name="speed" value="1" min="-26" max="51" step="5" />
 		<label for="speed">Speed</label>
 	</div>
-	<div class="controls">Space to Restart</div>
+	<div class="controls">Esc to Restart</div>
 	<div class="programs-container">
 		<div class="program-container">
 			<h2>Player 1 Program</h2>
@@ -211,7 +211,7 @@
 
 		window.addEventListener('keydown', e => {
 			if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
-			if (e.code === 'Space' && isGameOver) resetGame();
+			if (e.code === 'Escape' && isGameOver) resetGame();
 		});
 		window.addEventListener('keyup', e => {
 			if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
@@ -364,7 +364,7 @@
 				let winner = paddle1.score >= WINNING_SCORE ? "PLAYER 1" : "PLAYER 2";
 				ctx.fillText(winner + " WINS!", canvas.width / 2, canvas.height / 2);
 				ctx.font = "20px Courier New";
-				ctx.fillText("PRESS SPACE TO RESTART", canvas.width / 2, canvas.height / 2 + 50);
+				ctx.fillText("PRESS ESC TO RESTART", canvas.width / 2, canvas.height / 2 + 50);
 				ctx.textAlign = "start";
 			}
 		}
