@@ -53,6 +53,10 @@
 <body>
 	<h1 id="status">PONG</h1>
 	<canvas id="pongCanvas" class="pongCanvas" width="800" height="500"></canvas>
+	<div>
+		<input type="range" id="speed" name="speed" value="1" min="-26" max="51" step="5" />
+		<label for="speed">Speed</label>
+	</div>
 	<div class="controls">Space to Restart</div>
 	<div class="programs-container">
 		<div class="program-container">
@@ -165,6 +169,10 @@
 				}
 			}));
 		})();
+
+		var updatesPerLoop = 1;
+		speed.addEventListener("change", () => updatesPerLoop = speed.value);
+		speed.addEventListener("input", () => updatesPerLoop = speed.value);
 
 		const canvas = document.getElementById('pongCanvas');
 		const ctx = canvas.getContext('2d');
@@ -361,12 +369,23 @@
 			}
 		}
 
+		var counter = 0;
 		function gameLoop() {
+			counter = (counter + 1) % Math.abs(updatesPerLoop);
+			if (updatesPerLoop < 0) {
+				if (counter != 0) {
+					requestAnimationFrame(gameLoop);
+					return;
+				}
+			}
+			else {
+				for (let i = 0; i < updatesPerLoop; i++)
+					update();
+			}
 			lineDrawer1.clear();
 			lineDrawer2.clear();
 			update();
 			draw();
-			const fps = 30;
 			if (!isGameOver) {
 				requestAnimationFrame(gameLoop);
 			}
