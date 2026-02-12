@@ -54,7 +54,7 @@
 	<h1 id="status">PONG</h1>
 	<canvas id="pongCanvas" class="pongCanvas" width="800" height="500"></canvas>
 	<div>
-		<input type="range" id="speed" name="speed" value="1" min="-26" max="51" step="5" />
+		<input type="range" id="speed" name="speed" value="0" min="-25" max="50" step="5" />
 		<label for="speed">Speed</label>
 	</div>
 	<div class="controls">Esc to Restart</div>
@@ -170,7 +170,7 @@
 			}));
 		})();
 
-		var updatesPerLoop = 1;
+		var updatesPerLoop = 0;
 		speed.addEventListener("change", () => updatesPerLoop = speed.value);
 		speed.addEventListener("input", () => updatesPerLoop = speed.value);
 
@@ -371,7 +371,8 @@
 
 		var counter = 0;
 		function gameLoop() {
-			counter = (counter + 1) % Math.abs(updatesPerLoop);
+			if (updatesPerLoop != 0)
+				counter = (counter + 1) % Math.abs(updatesPerLoop);
 			if (updatesPerLoop < 0) {
 				if (counter != 0) {
 					requestAnimationFrame(gameLoop);
@@ -379,8 +380,11 @@
 				}
 			}
 			else {
-				for (let i = 0; i < updatesPerLoop; i++)
+				let i = 0;
+				while (i < updatesPerLoop) {
 					update();
+					i++;
+				}
 			}
 			lineDrawer1.clear();
 			lineDrawer2.clear();
