@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Pong</title>
+	<style>
+		body {
+			margin: 0;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			background-color: #1a1a1a;
+			color: #fff;
+			font-family: 'Courier New', Courier, monospace;
+			/* height: 100vh; */
+			/* overflow: hidden; */
+		}
+		textarea,
+		pre {
+			-moz-tab-size : 4;
+			-o-tab-size : 4;
+			tab-size : 4;
+		}
+		.pongCanvas {
+			background-color: #000;
+			border: 4px solid #fff;
+			/* width: 480px;
+			height: 300px; */
+		}
+		.controls {
+			margin-top: 15px;
+			color: #888;
+		}
+		.container {
+			display: flex;
+			justify-content: stretch;
+		}
+		.programs-container {
+			display: flex;
+			margin-bottom: 3em;
+		}
+		.botList input {
+			margin-bottom: 1em;
+		}
+	</style>
+</head>
+<body>
+	<h1 id="status">PONG</h1>
+	<canvas id="pongCanvas" class="pongCanvas" width="800" height="500"></canvas>
+	<div>
+		<input type="range" id="speed" name="speed" value="0" min="-25" max="50" step="5" />
+		<label for="speed">Speed</label>
+	</div>
+	<div class="controls">Esc to Restart</div>
+	<div class="botList">
+		<h3>Bots</h3>
+		<!-- <label for="fileInput" class="custom-button">Upload Text File</label> -->
+		<!-- <input type="file" id="fileInput" accept=".txt" style="display: none;"> -->
+		<input type="file" id="fileInput" accept=".txt" />
+		
+		<div id="fileList"></div>
+	</div>
+
+	<script src="pong.js"></script>
+	<script>
+		var game = new Game();
+
+		var updatesPerLoop = 0;
+		speed.addEventListener("change", () => updatesPerLoop = speed.value);
+		speed.addEventListener("input", () => updatesPerLoop = speed.value);
+
+		const canvas = document.getElementById('pongCanvas');
+		const ctx = canvas.getContext('2d');
+
+		window.addEventListener('keydown', e => {
+			if (e.code === 'Escape' && game.isGameOver) {
+				game.resetGame();
+				gameLoop();
+			}
+			if (e.key === 'r') {
+				game.resetGame();
+			}
+			if (e.key === 'p') {
+				game.togglePause();
+			}
+		});
+
+		var counter = 0;
+
+		function gameLoop() {
+			if (updatesPerLoop != 0)
+				counter = (counter + 1) % Math.abs(updatesPerLoop);
+			if (updatesPerLoop < 0) {
+				if (counter != 0) {
+					requestAnimationFrame(gameLoop);
+					return;
+				}
+			}
+			else {
+				let i = 0;
+				while (i < updatesPerLoop) {
+					game.update();
+					i++;
+				}
+			}
+			game.resetLineDrawers();
+			game.update();
+
+			// Clear screen
+			drawRect(ctx, 0, 0, ctx.canvas.width, ctx.canvas.height, "#000");
+			draw(ctx, game, 400, 250);
+			
+			if (!game.isGameOver) {
+				requestAnimationFrame(gameLoop);
+			}
+		}
+
+		function loadBot(index, position) {
+			let program = savedFiles[index].content;
+
+			if (position == 0)
+				game.setPlayerProgram(game.player1, program);
+			else if (position == 1) 
+				game.setPlayerProgram(game.player2, program);
+		}
+
+		gameLoop();
+
+		const botListStorageKey = "pongBots";
+
+		let savedFiles = JSON.parse(localStorage.getItem(botListStorageKey)) || [];
+
+		const fileInput = document.getElementById('fileInput');
+		const fileListDisplay = document.getElementById('fileList');
+
+		function renderList() {
+			fileListDisplay.innerHTML = '';
+			
+			savedFiles.forEach((file, index) => {
+				const div = document.createElement('div');
+				div.className = 'file-item';
+				div.innerHTML = `
+					<span>${file.name}</span>
+					<button onclick="loadBot(${index}, 0)">Load Left</button>
+					<button onclick="loadBot(${index}, 1)">Load Right</button>
+					<button onclick="deleteFile(${index})">Delete</button>
+				`;
+				fileListDisplay.appendChild(div);
+			});
+
+			// Keep localStorage in sync
+			localStorage.setItem(botListStorageKey, JSON.stringify(savedFiles));
+		}
+
+		fileInput.addEventListener('change', (e) => {
+			const file = e.target.files[0];
+			if (!file) return;
+
+			const reader = new FileReader();
+			reader.onload = (event) => {
+				savedFiles.push({
+					name: file.name,
+					content: event.target.result
+				});
+				renderList();
+				fileInput.value = ''; // Reset input
+			};
+			reader.readAsText(file);
+		});
+
+		window.deleteFile = (index) => {
+			savedFiles.splice(index, 1);
+			renderList();
+		};
+
+		renderList();
+	</script>
+</body>
+</html>
