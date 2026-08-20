@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Monty Hall Simulation</title>
+	<style>
+		body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 24px; text-align: center; }
+		h1 { margin-bottom: 8px; }
+		.doors { display: flex; justify-content: center; gap: 18px; margin: 28px 0; }
+		button { font: inherit; cursor: pointer; }
+		.door { width: 150px; height: 190px; font-size: 1.2rem; border: 3px solid #333; border-radius: 10px; background: #eee; }
+		.door:hover:not(:disabled) { background: #ddd; }
+		.door.open { background: #f5f5f5; cursor: default; }
+		.door.goat { background: #f7d9d9; }
+		.door.car { background: #d9f2dc; }
+		.controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+		.controls button, select { padding: 9px 14px; border: 1px solid #aaa; border-radius: 7px; background: white; }
+		.stats { display: flex; justify-content: center; gap: 35px; margin: 25px 0; flex-wrap: wrap; }
+		.stat strong { display: block; font-size: 1.5rem; }
+		#message { min-height: 2.5em; font-size: 1.1rem; }
+		#batchResults { margin: 20px auto; max-width: 600px; text-align: left; }
+		table { width: 100%; border-collapse: collapse; }
+		th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: right; }
+		th:first-child, td:first-child { text-align: left; }
+		.hidden { display: none; }
+	</style>
+</head>
+<body>
+	<h1>Monty Hall Problem</h1>
+	<p>Pick a door. Monty will reveal a goat behind another door. Then decide whether to stay or switch.</p>
+	
+	<div class="doors">
+		<button class="door" data-door="0">Door 1</button>
+		<button class="door" data-door="1">Door 2</button>
+		<button class="door" data-door="2">Door 3</button>
+	</div>
+	
+	<div id="message">Choose a door to begin.</div>
+	
+	<div class="controls">
+		<button id="switchBtn" disabled>Switch</button>
+		<button id="stayBtn" disabled>Stay</button>
+		<button id="newBtn">New Game</button>
+	</div>
+	
+	<div class="stats">
+		<div class="stat"><strong id="played">0</strong>Individual Games</div>
+		<div class="stat"><strong id="individualWins">0</strong>Wins</div>
+		<div class="stat"><strong id="individualRate">0%</strong>Win Rate</div>
+	</div>
+	
+	<div id="hiddenControls" class="hidden">
+		<hr>
+		<h2>Quick Simulation</h2>
+		<div class="controls">
+			<label>
+				Strategy:
+				<select id="strategy">
+					<option value="switch">Always Switch</option>
+					<option value="stay">Always Stay</option>
+					<option value="random">Random</option>
+				</select>
+			</label>
+			<label>
+				Trials:
+				<input id="trials" type="number" min="1" max="1000000" value="10000"
+				style="width:110px; padding:8px; border:1px solid #aaa; border-radius:7px;">
+			</label>
+			<button id="simulateBtn">Run Simulation</button>
+		</div>
+		
+		<div id="batchResults" class="hidden">
+			<table>
+				<thead><tr><th>Strategy</th><th>Wins</th><th>Losses</th><th>Win Rate</th></tr></thead>
+				<tbody><tr>
+					<td id="resultStrategy"></td>
+					<td id="wins"></td>
+					<td id="losses"></td>
+					<td id="rate"></td>
+				</tr></tbody>
+			</table>
+		</div>
+	</div>
+	
+	<script>
+		document.addEventListener("keydown", e => {
+			if (e.key === "`") {
+				document.getElementById("hiddenControls").classList.remove("hidden");
+			}
+		});
+
+		let prize, choice, revealed, gameOver = false;
+		let played = 0, wins = 0;
+		
+		const doors = [...document.querySelectorAll(".door")];
+		const message = document.getElementById("message");
+		const switchBtn = document.getElementById("switchBtn");
+		const stayBtn = document.getElementById("stayBtn");
+		
+		function randomDoor() {
+			return Math.floor(Math.random() * 3);
+		}
+		
+		function newGame() {
+			prize = randomDoor();
+			choice = null;
+			revealed = null;
+			gameOver = false;
+			
+			doors.forEach((d, i) => {
+				d.disabled = false;
+				d.className = "door";
+				d.textContent = "Door " + (i + 1);
+			});
+			switchBtn.disabled = true;
+			stayBtn.disabled = true;
+			message.textContent = "Choose a door to begin.";
+		}
+		
+		function chooseDoor(d) {
+			if (gameOver || choice !== null) return;
+			
+			choice = d;
+			
+			const possible = [0,1,2].filter(x => x !== choice && x !== prize);
+			revealed = possible[Math.floor(Math.random() * possible.length)];
+			
+			doors[revealed].classList.add("open", "goat");
+			doors[revealed].textContent = "🐐 Goat";
+			doors[revealed].disabled = true;
+			
+			doors.forEach((door, i) => {
+				if (i !== revealed) door.disabled = true;
+			});
+			
+			message.textContent = `You chose Door ${choice + 1}. Monty opened Door ${revealed + 1}. Stay or switch?`;
+			switchBtn.disabled = false;
+			stayBtn.disabled = false;
+		}
+		
+		function finish(finalChoice) {
+			if (gameOver) return;
+			gameOver = true;
+			const won = finalChoice === prize;
+			played++;
+			if (won) wins++;
+			
+			doors.forEach((door, i) => {
+				door.disabled = true;
+				if (i === prize) {
+					door.classList.add("open", "car");
+					door.textContent = "🚗 Car";
+				} else if (i !== revealed) {
+					door.classList.add("open", "goat");
+					door.textContent = "🐐 Goat";
+				}
+			});
+			
+			message.textContent = won
+			? "🎉 You won! You found the car."
+			: "😬 You lost. The car was behind Door " + (prize + 1) + ".";
+			
+			switchBtn.disabled = true;
+			stayBtn.disabled = true;
+			updateStats();
+		}
+		
+		function updateStats() {
+			document.getElementById("played").textContent = played.toLocaleString();
+			document.getElementById("individualWins").textContent = wins.toLocaleString();
+			document.getElementById("individualRate").textContent =
+			played ? (100 * wins / played).toFixed(1) + "%" : "0%";
+		}
+		
+		doors.forEach((door, i) => door.addEventListener("click", () => chooseDoor(i)));
+		switchBtn.addEventListener("click", () => finish(3 - choice - revealed));
+		stayBtn.addEventListener("click", () => finish(choice));
+		document.getElementById("newBtn").addEventListener("click", newGame);
+		
+		document.getElementById("simulateBtn").addEventListener("click", () => {
+			let n = Math.min(1000000, Math.max(1, Number(document.getElementById("trials").value) || 1));
+			const strategy = document.getElementById("strategy").value;
+			let w = 0;
+			
+			for (let i = 0; i < n; i++) {
+				const car = randomDoor();
+				const first = randomDoor();
+				const remaining = [0,1,2].filter(x => x !== first && x !== car);
+				const revealedDoor = remaining[Math.floor(Math.random() * remaining.length)];
+				const switched = [0,1,2].find(x => x !== first && x !== revealedDoor);
+				
+				let finalChoice;
+				if (strategy === "switch") finalChoice = switched;
+				else if (strategy === "stay") finalChoice = first;
+				else finalChoice = Math.random() < 0.5 ? first : switched;
+				
+				if (finalChoice === car) w++;
+			}
+			
+			document.getElementById("resultStrategy").textContent =
+			strategy === "switch" ? "Always Switch" :
+			strategy === "stay" ? "Always Stay" : "Random";
+			document.getElementById("wins").textContent = w.toLocaleString();
+			document.getElementById("losses").textContent = (n - w).toLocaleString();
+			document.getElementById("rate").textContent = (100 * w / n).toFixed(2) + "%";
+			document.getElementById("batchResults").classList.remove("hidden");
+		});
+		
+		newGame();
+	</script>
+</body>
+</html>
